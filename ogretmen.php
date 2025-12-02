@@ -28,41 +28,22 @@ $aktif_yoklama_id = 0;
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['baslat'])) {
     
     $ders_adi = $conn->real_escape_string($_POST['ders_adi']);
-    $sure_dk_girdi = (int)$_POST['sure_dk']; 
-
-    $secilen_tarih = $conn->real_escape_string($_POST['tarih']); 
-    $secilen_saat = $conn->real_escape_string($_POST['saat']);
     
-    $baslangic_zamani = $secilen_tarih . ' ' . $secilen_saat . ':00';
-    
-    $yazilacak_sure = $sure_dk_girdi; 
+    // Süre değerini güvenli şekilde al (farklı tarayıcı/dil ayarlarına karşı)
+    // Virgülü noktaya çevir (bazı tarayıcılar ondalık ayırıcı olarak virgül kullanır)
+    $sure_ham = isset($_POST['sure_dk']) ? $_POST['sure_dk'] : '5';
+    $sure_ham = str_replace(',', '.', $sure_ham); // Virgülü noktaya çevir
+    $sure_ham = preg_replace('/[^0-9.]/', '', $sure_ham); // Sadece rakam ve nokta bırak
+    $sure_dk_girdi = intval(floatval($sure_ham)); // Önce float, sonra int'e çevir
 
-   
-    // Eğer değişkenin değeri (örneğin 5), 1'e eşitlenmeye çalışılırsa, bunu burada engelleyelim
-    if ($yazilacak_sure < 1) {
-        $yazilacak_sure = 1; // En az 1 dakika olsun
-    }
-  
+    // Başlangıç zamanı: Butona basıldığı anki sunucu zamanı (tam 360 saniye için)
+    $baslangic_zamani = date('Y-m-d H:i:s');
+    
+    // Süre kontrolü: en az 1, en fazla 120 dakika
+    $yazilacak_sure = max(1, min(120, $sure_dk_girdi));
 
     $sql_insert = "INSERT INTO yoklamalar (ders_adi, baslangic_zamani, sure_dk) 
                    VALUES ('$ders_adi', '$baslangic_zamani', $yazilacak_sure)"; 
-    
-
-
-
-
-
-    // 🛑 SON BİR DEFA KAYIT ÖNCESİ KONTROL 🛑
-    echo "<h1>KRİTİK TEST: Veritabanına Yazılacak Değer: " . $yazilacak_sure . "</h1>";
-    
-    // Kayıt işlemini 10 saniye geciktirerek veritabanını kontrol etmenize olanak tanır.
-    // Lütfen bu 10 saniye içinde phpMyAdmin'i kontrol edin.
-    sleep(10); 
-
-
-
-
-
 
     if ($conn->query($sql_insert) === TRUE) {
         
@@ -172,25 +153,6 @@ if ($result_aktif->num_rows > 0) {
                 AKTİF YOKLAMA: <?php echo htmlspecialchars($aktif_ders); ?>
             </div>
 
-
-
-
-
-
-
-            <?php 
-               if ($yoklama_basladi) {
-                   echo "<div style='color: blue; font-size: 20px;'>PHP Tarafından Hesaplanan Değer: " . $kalan_saniye . " saniye</div>";
-               }
-            ?>
-
-
-
-
-
-
-
-
             <p>Kalan Süre: <span id="timer-kalan"><?php echo $kalan_saniye; ?></span> saniye</p>
             
             <form method="POST" action="ogretmen.php" onsubmit="return confirm('Aktif yoklamayı sonlandırmak istediğinizden emin misiniz?');">
@@ -206,20 +168,10 @@ if ($result_aktif->num_rows > 0) {
                     <label for="ders_adi">Ders Adı:</label>
                     <input type="text" id="ders_adi" name="ders_adi" required placeholder="Örn: Web Programlama">
                 </div>
-                
-                <div class="form-group">
-                    <label for="tarih">Başlangıç Tarihi:</label>
-                    <input type="date" id="tarih" name="tarih" required value="<?php echo date('Y-m-d'); ?>"> 
-                </div>
-
-                <div class="form-group">
-                    <label for="saat">Başlangıç Saati:</label>
-                    <input type="time" id="saat" name="saat" required value="<?php echo date('H:i'); ?>"> 
-                </div>
 
                 <div class="form-group">
                     <label for="sure_dk">Süre (Dakika):</label>
-                    <input type="number" id="sure_dk" name="sure_dk" required min="1" max="60" value="5">
+                    <input type="number" id="sure_dk" name="sure_dk" required min="1" max="120" value="5">
                 </div>
                 
                 <button type="submit" name="baslat">Yoklamayı Başlat</button>
