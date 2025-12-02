@@ -1,0 +1,1 @@
+uygulamayı başlatma : Start-Process 'http://localhost/yoklamasis'
